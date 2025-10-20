@@ -1,6 +1,6 @@
 """
 Flask API para el analizador de anuncios de empleo.
-ESTE ARCHIVO DEBE SER app.py (NO main.py)
+ARCHIVO: app.py (SEPARADO de main.py)
 """
 
 from flask import Flask, request, jsonify
@@ -8,7 +8,7 @@ from werkzeug.utils import secure_filename
 import os
 import tempfile
 
-# Importar desde main.py (NO desde este archivo)
+# Importar la clase desde main.py
 from main import JobAnalyzerFirebase
 
 app = Flask(__name__)
@@ -17,13 +17,8 @@ app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
 
-# Inicializar el analizador una sola vez
-try:
-    analyzer = JobAnalyzerFirebase()
-    print("✅ Analyzer inicializado correctamente")
-except Exception as e:
-    print(f"❌ Error al inicializar analyzer: {e}")
-    analyzer = None
+# Inicializar el analizador
+analyzer = JobAnalyzerFirebase()
 
 def allowed_file(filename):
     """Verifica si la extensión del archivo es permitida."""
@@ -41,15 +36,12 @@ def home():
             "/analyze/image": "POST - Analizar imagen (multipart/form-data)",
             "/analyze/text": "POST - Analizar texto (application/json)",
             "/analyze": "POST - Analizar imagen y/o texto"
-        },
-        "version": "1.0.0"
+        }
     })
 
 @app.route('/health', methods=['GET'])
 def health():
     """Health check endpoint."""
-    if analyzer is None:
-        return jsonify({"status": "unhealthy", "error": "Analyzer no inicializado"}), 503
     return jsonify({"status": "healthy"}), 200
 
 @app.route('/analyze/image', methods=['POST'])
@@ -61,9 +53,6 @@ def analyze_image():
     - file: archivo de imagen (multipart/form-data)
     - additional_text: texto adicional opcional (form field)
     """
-    if analyzer is None:
-        return jsonify({"error": "Servicio no disponible"}), 503
-    
     try:
         # Verificar que hay un archivo
         if 'file' not in request.files:
@@ -75,7 +64,7 @@ def analyze_image():
             return jsonify({"error": "Nombre de archivo vacío"}), 400
         
         if not allowed_file(file.filename):
-            return jsonify({"error": f"Tipo de archivo no permitido. Permitidos: {', '.join(ALLOWED_EXTENSIONS)}"}), 400
+            return jsonify({"error": "Tipo de archivo no permitido"}), 400
         
         # Obtener texto adicional si existe
         additional_text = request.form.get('additional_text', None)
@@ -102,7 +91,7 @@ def analyze_image():
                 os.unlink(temp_path)
     
     except Exception as e:
-        return jsonify({"error": f"Error al procesar imagen: {str(e)}"}), 500
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/analyze/text', methods=['POST'])
 def analyze_text():
@@ -114,14 +103,11 @@ def analyze_text():
         "text": "texto del anuncio"
     }
     """
-    if analyzer is None:
-        return jsonify({"error": "Servicio no disponible"}), 503
-    
     try:
         data = request.get_json()
         
         if not data or 'text' not in data:
-            return jsonify({"error": "Se requiere el campo 'text' en formato JSON"}), 400
+            return jsonify({"error": "Se requiere el campo 'text'"}), 400
         
         text = data['text']
         
@@ -137,7 +123,7 @@ def analyze_text():
         return jsonify(result), 200
     
     except Exception as e:
-        return jsonify({"error": f"Error al procesar texto: {str(e)}"}), 500
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
@@ -149,12 +135,9 @@ def analyze():
     - Solo texto (application/json con 'text')
     - Imagen + texto (multipart/form-data con 'file' y 'text')
     """
-    if analyzer is None:
-        return jsonify({"error": "Servicio no disponible"}), 503
-    
     try:
         # Determinar el tipo de contenido
-        content_type = request.content_type or ''
+        content_type = request.content_type
         
         if 'multipart/form-data' in content_type:
             # Puede tener imagen y/o texto
@@ -171,7 +154,7 @@ def analyze():
                     file = request.files['file']
                     
                     if not allowed_file(file.filename):
-                        return jsonify({"error": f"Tipo de archivo no permitido. Permitidos: {', '.join(ALLOWED_EXTENSIONS)}"}), 400
+                        return jsonify({"error": "Tipo de archivo no permitido"}), 400
                     
                     # Guardar temporalmente el archivo
                     with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
@@ -200,7 +183,7 @@ def analyze():
             data = request.get_json()
             
             if not data or 'text' not in data:
-                return jsonify({"error": "Se requiere el campo 'text' en formato JSON"}), 400
+                return jsonify({"error": "Se requiere el campo 'text'"}), 400
             
             result = analyzer.process_job_text(
                 text=data['text'],
@@ -210,14 +193,10 @@ def analyze():
             return jsonify(result), 200
         
         else:
-            return jsonify({
-                "error": "Content-Type no soportado",
-                "received": content_type,
-                "supported": ["multipart/form-data", "application/json"]
-            }), 400
+            return jsonify({"error": "Content-Type no soportado"}), 400
     
     except Exception as e:
-        return jsonify({"error": f"Error al procesar: {str(e)}"}), 500
+        return jsonify({"error": str(e)}), 500
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
@@ -227,28 +206,12 @@ def request_entity_too_large(error):
 @app.errorhandler(404)
 def not_found(error):
     """Maneja rutas no encontradas."""
-    return jsonify({
-        "error": "Endpoint no encontrado",
-        "path": request.path,
-        "method": request.method
-    }), 404
-
-@app.errorhandler(405)
-def method_not_allowed(error):
-    """Maneja métodos no permitidos."""
-    return jsonify({
-        "error": "Método no permitido",
-        "path": request.path,
-        "method": request.method
-    }), 405
+    return jsonify({"error": "Endpoint no encontrado"}), 404
 
 @app.errorhandler(500)
 def internal_error(error):
     """Maneja errores internos."""
     return jsonify({"error": "Error interno del servidor"}), 500
 
-# Este bloque solo se ejecuta cuando corres python app.py directamente
-# NO se ejecuta cuando Gunicorn importa el módulo
 if __name__ == '__main__':
-    print("🚀 Iniciando Flask en modo desarrollo...")
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    app.run(host='0.0.0.0', port=8080, debug=False)
