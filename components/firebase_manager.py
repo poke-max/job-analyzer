@@ -1,38 +1,80 @@
 """
 Módulo para gestión de Firebase (Storage y Firestore).
 Maneja la subida de imágenes y almacenamiento de datos.
+Compatible con variables de entorno de Railway.
 """
 
 import firebase_admin
 from firebase_admin import credentials, firestore, storage
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 from io import BytesIO
 import os
-from dotenv import load_dotenv
+import json
 
-# Cargar variables de entorno
-load_dotenv()
+# Intentar cargar .env solo si existe (desarrollo local)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except:
+    pass  # En producción (Railway) no necesitamos dotenv
 
 
 class FirebaseManager:
     """Gestor centralizado para operaciones de Firebase Storage y Firestore."""
     
-    def __init__(self, service_account_path: str = 'serviceAccountKey.json'):
+    def __init__(self, service_account_path: Union[str, dict] = 'serviceAccountKey.json'):
         """
         Inicializa la conexión con Firebase.
         
         Args:
-            service_account_path: Ruta al archivo de credenciales de Firebase
+            service_account_path: Ruta al archivo de credenciales O diccionario con credenciales
         """
+        # Leer storage bucket desde variables de entorno
         storage_bucket = os.getenv('FIREBASE_STORAGE_BUCKET')
         
         if not storage_bucket:
-            raise ValueError("❌ FIREBASE_STORAGE_BUCKET no encontrada en archivo .env")
+            raise ValueError("❌ FIREBASE_STORAGE_BUCKET no encontrada en variables de entorno")
         
         # Inicializar Firebase solo si no está inicializado
         if not firebase_admin._apps:
-            cred = credentials.Certificate(service_account_path)
+            cred = None
+            
+            # Opción 1: Credenciales desde diccionario
+            if isinstance(service_account_path, dict):
+                cred = credentials.Certificate(service_account_path)
+                print("✅ Usando credenciales desde diccionario")
+            
+            # Opción 2: Credenciales desde variable de entorno FIREBASE_CREDENTIALS
+            elif isinstance(service_account_path, str):
+                firebase_creds_json = os.getenv('FIREBASE_CREDENTIALS')
+                
+                if firebase_creds_json:
+                    # Intentar usar la variable de entorno primero
+                    try:
+                        creds_dict = json.loads(firebase_creds_json)
+                        cred = credentials.Certificate(creds_dict)
+                        print("✅ Usando credenciales desde variable FIREBASE_CREDENTIALS")
+                    except json.JSONDecodeError as e:
+                        raise ValueError(f"❌ Error parseando FIREBASE_CREDENTIALS: {e}")
+                
+                # Opción 3: Archivo local (solo para desarrollo)
+                elif os.path.exists(service_account_path):
+                    cred = credentials.Certificate(service_account_path)
+                    print(f"✅ Usando credenciales desde archivo: {service_account_path}")
+                
+                else:
+                    raise FileNotFoundError(
+                        f"❌ No se encontró el archivo '{service_account_path}' "
+                        "ni la variable de entorno FIREBASE_CREDENTIALS. "
+                        "Por favor configura FIREBASE_CREDENTIALS en Railway."
+                    )
+            else:
+                raise TypeError("service_account_path debe ser str o dict")
+            
+            if cred is None:
+                raise ValueError("❌ No se pudieron cargar las credenciales de Firebase")
+            
             firebase_admin.initialize_app(cred, {
                 'storageBucket': storage_bucket
             })
@@ -287,30 +329,3 @@ class FirebaseManager:
         except Exception as e:
             print(f"❌ Error en consulta: {str(e)}")
             return []
-
-
-# Ejemplo de uso
-if __name__ == "__main__":
-    # Inicializar manager
-    fb_manager = FirebaseManager()
-    
-    # Ejemplo: Subir imagen
-    # with open("ejemplo.webp", "rb") as f:
-    #     image_buffer = BytesIO(f.read())
-    #     url = fb_manager.upload_image_to_storage(image_buffer)
-    
-    # Ejemplo: Guardar datos
-    datos = {
-        'position': 'Desarrollador Python',
-        'city': 'Asunción',
-        'company': 'Tech Corp',
-        'salary_range': '3000-5000'
-    }
-    doc_id = fb_manager.upload_to_firestore(datos)
-    
-    # Ejemplo: Consultar datos
-    resultados = fb_manager.query_firestore(
-        filters=[('city', '==', 'Asunción')],
-        limit=10
-    )
-    print(f"\n📊 Resultados encontrados: {len(resultados)}")
