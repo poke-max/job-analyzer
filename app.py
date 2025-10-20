@@ -7,6 +7,7 @@ from flask import Flask, request, jsonify
 from werkzeug.utils import secure_filename
 import os
 import tempfile
+import json
 
 # Importar la clase desde main.py
 from main import JobAnalyzerFirebase
@@ -17,8 +18,24 @@ app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
 
-# Inicializar el analizador
-analyzer = JobAnalyzerFirebase()
+# Función para preparar las credenciales de Firebase
+def setup_firebase_credentials():
+    """Configura las credenciales de Firebase desde variable de entorno o archivo."""
+    firebase_creds = os.environ.get('FIREBASE_CREDENTIALS')
+    
+    if firebase_creds:
+        # Si hay credenciales en variable de entorno, crear archivo temporal
+        temp_creds_path = '/tmp/serviceAccountKey.json'
+        with open(temp_creds_path, 'w') as f:
+            f.write(firebase_creds)
+        return temp_creds_path
+    else:
+        # Usar archivo local (para desarrollo)
+        return 'serviceAccountKey.json'
+
+# Inicializar el analizador con las credenciales correctas
+service_account_path = setup_firebase_credentials()
+analyzer = JobAnalyzerFirebase(service_account_path)
 
 def allowed_file(filename):
     """Verifica si la extensión del archivo es permitida."""
