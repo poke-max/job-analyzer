@@ -8,9 +8,28 @@ from werkzeug.utils import secure_filename
 import os
 import tempfile
 import json
+from datetime import datetime
 
 # Importar la clase desde main.py
 from main import JobAnalyzerFirebase
+
+def serialize_result(data):
+    """Convierte el resultado a un formato JSON serializable."""
+    if not isinstance(data, dict):
+        return data
+    
+    serialized = {}
+    for key, value in data.items():
+        # Convertir timestamps a strings
+        if key in ['createdAt', 'updatedAt']:
+            if value is not None:
+                serialized[key] = datetime.now().isoformat()
+            else:
+                continue
+        else:
+            serialized[key] = value
+    
+    return serialized
 
 app = Flask(__name__)
 
@@ -489,7 +508,7 @@ def analyze_image():
                 upload_to_firestore=True
             )
             
-            return jsonify(result), 200
+            return jsonify(serialize_result(result)), 200
         
         finally:
             # Limpiar archivo temporal
@@ -526,7 +545,7 @@ def analyze_text():
             upload_to_firestore=True
         )
         
-        return jsonify(result), 200
+        return jsonify(serialize_result(result)), 200
     
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -577,7 +596,7 @@ def analyze():
                     upload_to_firestore=True
                 )
                 
-                return jsonify(result), 200
+                return jsonify(serialize_result(result)), 200
             
             finally:
                 # Limpiar archivo temporal
@@ -596,7 +615,7 @@ def analyze():
                 upload_to_firestore=True
             )
             
-            return jsonify(result), 200
+            return jsonify(serialize_result(result)), 200
         
         else:
             return jsonify({"error": "Content-Type no soportado"}), 400
