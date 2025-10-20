@@ -415,6 +415,15 @@ def home():
                     });
                 }
                 
+                // Verificar si la respuesta es JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const textResponse = await response.text();
+                    console.error('Respuesta no-JSON del servidor:', textResponse);
+                    showError('El servidor devolvió un error. Revisa la consola para más detalles.');
+                    return;
+                }
+                
                 const data = await response.json();
                 
                 if (response.ok) {
@@ -423,6 +432,7 @@ def home():
                     showError(data.error || 'Error al analizar el anuncio');
                 }
             } catch (err) {
+                console.error('Error completo:', err);
                 showError('Error de conexión: ' + err.message);
             } finally {
                 loading.style.display = 'none';
@@ -516,7 +526,10 @@ def analyze_image():
                 os.unlink(temp_path)
     
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Error en analyze_image: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Error al procesar: {str(e)}"}), 500
 
 @app.route('/analyze/text', methods=['POST'])
 def analyze_text():
@@ -548,7 +561,10 @@ def analyze_text():
         return jsonify(serialize_result(result)), 200
     
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Error en analyze_text: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Error al procesar: {str(e)}"}), 500
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
