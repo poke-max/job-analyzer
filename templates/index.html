@@ -1,0 +1,442 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procesador de Anuncios de Empleo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 15px;
+            color: white;
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .upload-section {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .drop-zone {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+        }
+
+        .drop-zone:hover, .drop-zone.drag-over {
+            background: #667eea;
+            color: white;
+            transform: scale(1.02);
+        }
+
+        .drop-zone.drag-over {
+            border-color: #764ba2;
+        }
+
+        .drop-zone svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .drop-zone h3 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+
+        .drop-zone p {
+            opacity: 0.7;
+        }
+
+        .queue-section {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .clear-btn {
+            background: #ff4757;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+        }
+
+        .clear-btn:hover {
+            background: #ff3838;
+            transform: scale(1.05);
+        }
+
+        .file-item {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .file-item.processing {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .file-item.completed {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+
+        .file-item.error {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+
+        .file-icon {
+            width: 40px;
+            height: 40px;
+            flex-shrink: 0;
+        }
+
+        .file-info {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .file-status {
+            font-size: 0.85em;
+            opacity: 0.8;
+        }
+
+        .file-result {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(255,255,255,0.5);
+            border-radius: 8px;
+            font-size: 0.9em;
+        }
+
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .empty-state svg {
+            width: 60px;
+            height: 60px;
+            opacity: 0.3;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Procesador de Anuncios de Empleo</h1>
+            <p>Arrastra imágenes o archivos de texto para procesarlos</p>
+            
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="number" id="stat-total">0</div>
+                    <div class="label">Total</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="stat-procesados">0</div>
+                    <div class="label">Procesados</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="stat-exitosos">0</div>
+                    <div class="label">Exitosos</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="stat-fallidos">0</div>
+                    <div class="label">Fallidos</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="upload-section">
+                <h2 class="section-title">📤 Subir Archivos</h2>
+                <div class="drop-zone" id="dropZone">
+                    <svg fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M16.88 9.1A4 4 0 0 1 16 17H5a5 5 0 0 1-1-9.9V7a3 3 0 0 1 4.52-2.59A4.98 4.98 0 0 1 17 8c0 .38-.04.74-.12 1.1zM11 11h3l-4-4-4 4h3v3h2v-3z"/>
+                    </svg>
+                    <h3>Arrastra archivos aquí</h3>
+                    <p>o haz clic para seleccionar</p>
+                    <p style="margin-top: 10px; font-size: 0.9em;">📸 Imágenes: JPG, PNG, WebP | 📄 Textos: TXT, MD</p>
+                </div>
+                <input type="file" id="fileInput" style="display: none;" multiple accept=".jpg,.jpeg,.png,.webp,.bmp,.gif,.txt,.md,.text">
+            </div>
+
+            <div class="queue-section">
+                <h2 class="section-title">
+                    📋 Cola de Procesamiento
+                    <button class="clear-btn" onclick="clearQueue()">🗑️ Limpiar</button>
+                </h2>
+                <div id="processingArea"></div>
+                <div id="queuedArea"></div>
+                <div id="completedArea"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+
+        // Drag and drop
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        async function handleFiles(files) {
+            for (let file of files) {
+                await uploadFile(file);
+            }
+        }
+
+        async function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    console.log('Archivo subido:', data.file);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error al subir archivo:', error);
+                alert('Error al subir archivo');
+            }
+        }
+
+        function updateUI(data) {
+            // Actualizar estadísticas
+            document.getElementById('stat-total').textContent = data.stats.total;
+            document.getElementById('stat-procesados').textContent = data.stats.procesados;
+            document.getElementById('stat-exitosos').textContent = data.stats.exitosos;
+            document.getElementById('stat-fallidos').textContent = data.stats.fallidos;
+
+            // Actualizar área de procesamiento
+            const processingArea = document.getElementById('processingArea');
+            if (data.files.processing.length > 0) {
+                processingArea.innerHTML = '<h3 style="margin-bottom: 15px; color: #667eea;">⚡ Procesando Ahora</h3>' +
+                    data.files.processing.map(f => createFileCard(f, true)).join('');
+            } else {
+                processingArea.innerHTML = '';
+            }
+
+            // Actualizar cola
+            const queuedArea = document.getElementById('queuedArea');
+            if (data.files.queued.length > 0) {
+                queuedArea.innerHTML = '<h3 style="margin-top: 20px; margin-bottom: 15px; color: #ffa502;">⏳ En Cola (' + data.files.queued.length + ')</h3>' +
+                    data.files.queued.map(f => createFileCard(f, false)).join('');
+            } else {
+                queuedArea.innerHTML = '';
+            }
+
+            // Actualizar completados
+            const completedArea = document.getElementById('completedArea');
+            if (data.files.completed.length > 0) {
+                completedArea.innerHTML = '<h3 style="margin-top: 20px; margin-bottom: 15px; color: #2ed573;">✅ Completados</h3>' +
+                    data.files.completed.map(f => createFileCard(f, false)).join('');
+            } else if (data.files.queued.length === 0 && data.files.processing.length === 0) {
+                completedArea.innerHTML = '<div class="empty-state"><svg fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/></svg><p>No hay archivos en la cola</p><p style="font-size: 0.9em; margin-top: 5px;">Arrastra archivos para comenzar</p></div>';
+            }
+        }
+
+        function createFileCard(file, isProcessing) {
+            const typeEmoji = file.type === 'image' ? '📸' : '📄';
+            const statusClass = file.status;
+            
+            let statusHTML = '';
+            if (file.status === 'processing') {
+                statusHTML = '<div class="spinner"></div>';
+            } else if (file.status === 'completed') {
+                const jobStatus = file.is_job ? '✅ Anuncio detectado' : '⚠️ No es anuncio';
+                const position = file.result?.position || 'N/A';
+                statusHTML = `<div class="file-result"><strong>${jobStatus}</strong><br>Posición: ${position}</div>`;
+            } else if (file.status === 'error') {
+                statusHTML = `<div class="file-result">❌ Error: ${file.error}</div>`;
+            } else if (file.status === 'queued') {
+                statusHTML = '<div class="file-status">⏳ En espera...</div>';
+            }
+
+            return `
+                <div class="file-item ${statusClass}">
+                    <div class="file-icon">${typeEmoji}</div>
+                    <div class="file-info">
+                        <div class="file-name">${file.name}</div>
+                        ${statusHTML}
+                    </div>
+                    ${isProcessing ? '<div class="spinner"></div>' : ''}
+                </div>
+            `;
+        }
+
+        async function clearQueue() {
+            if (confirm('¿Limpiar todos los archivos completados?')) {
+                await fetch('/clear', { method: 'POST' });
+            }
+        }
+
+        // Poll status cada segundo
+        setInterval(async () => {
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+                updateUI(data);
+            } catch (error) {
+                console.error('Error al obtener estado:', error);
+            }
+        }, 1000);
+
+        // Cargar estado inicial
+        updateUI({
+            stats: { total: 0, procesados: 0, exitosos: 0, fallidos: 0 },
+            files: { processing: [], queued: [], completed: [] }
+        });
+    </script>
+</body>
+</html>
